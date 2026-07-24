@@ -2,9 +2,9 @@ name: CI Monorepo
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -12,7 +12,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build Docker
-        run: docker compose build
-      - name: Run Pytest
-        run: docker compose run --rm backend pytest
+      - run: docker compose build
+      - run: docker compose run --rm backend pytest
