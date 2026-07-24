@@ -29,6 +29,7 @@ from app.routers import calculadora_router, health_router, auth_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Calculadora API v6.0.0 iniciada (versión final)")
+    print("Práctica de CI - GitHub Actions - Cristian")
     logger.info(f"CORS habilitado para: {settings.CORS_ORIGINS}")
     yield
     logger.info("Calculadora API apagada")
