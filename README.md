@@ -3,7 +3,8 @@
 Este documento describe la estructura del repositorio "Taller-DevOps-Monorepo-CI" y explica brevemente el propósito de cada carpeta/archivo principal. El repositorio es un monorepo con un backend en Python (FastAPI) y un frontend en React + TypeScript, además de configuraciones para Docker y CI.
 
 ---
-
+##esto es un comentario jajaj
+##esto es otro pequeño cambio 
 ## Árbol de archivos (resumido)
 
 ```
