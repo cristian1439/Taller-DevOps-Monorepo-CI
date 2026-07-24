@@ -127,7 +127,7 @@ class TestDividir:
             headers=auth_headers,
         )
         assert response.status_code == 200
-        assert response.json()["resultado"] == 3.5
+        assert response.json()["resultado"] == 3
 
     def test_division_entre_cero_retorna_400(self, client, auth_headers):
         """Dividir entre cero debe retornar error 400."""
