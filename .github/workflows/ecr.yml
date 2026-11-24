@@ -1,0 +1,154 @@
+name: Build, Push and Test Images
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  backend-build:
+    name: Build, Push and Test Backend Docker Image
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar credenciales AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Autenticar Docker con ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build y push de la imagen Backend
+        env:
+          BACKEND_ECR_REGISTRY: ${{ vars.BACKEND_ECR_REGISTRY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            -t $BACKEND_ECR_REGISTRY:$IMAGE_TAG \
+            ./backend/.
+          docker push $BACKEND_ECR_REGISTRY:$IMAGE_TAG
+
+      - name: Verificar imagen de Backend (Pull de ECR y Run local)
+        env:
+          BACKEND_ECR_REGISTRY: ${{ vars.BACKEND_ECR_REGISTRY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # 0. Limpiar contenedores de ejecuciones anteriores para evitar conflictos de nombre
+          docker rm -f backend-test || true
+
+          # 1. Eliminar la imagen local del build para forzar la descarga desde ECR
+          docker rmi $BACKEND_ECR_REGISTRY:$IMAGE_TAG || true
+
+          # 2. Descargar la imagen inmutable directamente desde AWS ECR
+          docker pull $BACKEND_ECR_REGISTRY:$IMAGE_TAG
+
+          # 3. Correr la imagen localmente en el runner en segundo plano (detached)
+          docker run -d --name backend-test $BACKEND_ECR_REGISTRY:$IMAGE_TAG
+
+          # 4. Esperar unos segundos y verificar que el contenedor sigue activo
+          sleep 5
+
+          # 5. Si el contenedor se detuvo, mostramos el error real
+          if ! docker ps | grep -q backend-test; then
+            echo "El contenedor del Backend se detuvo inesperadamente. Aquí están los logs internos:"
+            docker logs backend-test
+            exit 1
+          fi
+
+      - name: Escribir summary del job (Backend)
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "## Resumen del job - Backend" >> $GITHUB_STEP_SUMMARY
+          echo "- Job: ${GITHUB_JOB}" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${JOB_STATUS}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${GITHUB_SHA}" >> $GITHUB_STEP_SUMMARY
+          echo "- Image tag: ${IMAGE_TAG}" >> $GITHUB_STEP_SUMMARY
+
+  frontend-build:
+    name: Build, Push and Test Frontend Docker Image
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar credenciales AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Autenticar Docker con ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build y push de la imagen Frontend
+        env:
+          FRONTEND_ECR_REGISTRY: ${{ vars.FRONTEND_ECR_REGISTRY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            -t $FRONTEND_ECR_REGISTRY:$IMAGE_TAG \
+            ./frontend/.
+          docker push $FRONTEND_ECR_REGISTRY:$IMAGE_TAG
+
+      - name: Verificar imagen de Frontend (Pull de ECR y Run local)
+        env:
+          FRONTEND_ECR_REGISTRY: ${{ vars.FRONTEND_ECR_REGISTRY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # 0. Limpiar contenedores de ejecuciones anteriores para evitar conflictos de nombre
+          docker rm -f frontend-test || true
+
+          # 1. Eliminar la imagen local del build para forzar la descarga desde ECR
+          docker rmi $FRONTEND_ECR_REGISTRY:$IMAGE_TAG || true
+
+          # 2. Descargar la imagen inmutable directamente desde AWS ECR
+          docker pull $FRONTEND_ECR_REGISTRY:$IMAGE_TAG
+
+          # 3. Correr la imagen localmente en el runner en segundo plano
+          docker run -d \
+            --name frontend-test \
+            -e BACKEND_HOST="localhost" \
+            -e BACKEND_PORT="8000" \
+            $FRONTEND_ECR_REGISTRY:$IMAGE_TAG
+
+          # 4. Esperar unos segundos y verificar que el contenedor sigue activo
+          sleep 5
+
+          # 5. Si el contenedor se detuvo, mostramos el error real
+          if ! docker ps | grep -q frontend-test; then
+            echo "El contenedor del Frontend se detuvo inesperadamente. Aquí están los logs internos:"
+            docker logs frontend-test
+            exit 1
+          fi
+
+      - name: Escribir summary del job (Frontend)
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "## Resumen del job - Frontend" >> $GITHUB_STEP_SUMMARY
+          echo "- Job: ${GITHUB_JOB}" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${JOB_STATUS}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${GITHUB_SHA}" >> $GITHUB_STEP_SUMMARY
+          echo "- Image tag: ${IMAGE_TAG}" >> $GITHUB_STEP_SUMMARY
