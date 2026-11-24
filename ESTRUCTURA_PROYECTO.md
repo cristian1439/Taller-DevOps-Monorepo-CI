@@ -44,3 +44,5 @@ Taller-DevOps-Monorepo-CI/
 - `backend/`: API REST con FastAPI, autenticación JWT y validación con Pydantic.
 - `backend/tests/`: pruebas automatizadas con pytest.
 - `frontend/`: aplicación React + TypeScript servida con nginx como proxy reverso.
+
+- `main` está protegida: requiere PR, aprobación y que pase el CI.
