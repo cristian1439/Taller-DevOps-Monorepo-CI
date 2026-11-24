@@ -85,7 +85,7 @@ class TestMultiplicar:
     def test_multiplicacion_correcta(self, client, auth_headers):
         response = client.post(
             "/calculadora/multiplicar",
-            json={"a": 4, "b": 5},
+            json={"a": 5, "b": 5},
             headers=auth_headers,
         )
         assert response.status_code == 200
